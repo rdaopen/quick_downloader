@@ -80,12 +80,12 @@ Then create a `LICENSE.txt` file in the project root.
 After building the installer:
 
 1. **Single File Distribution**
-   - Share `QuickDownloader_Setup_v1.0.0.exe`
+   - Share `QuickDownloader_Setup.exe`
    - Users download and run it
    - That's it!
 
 2. **Installer Size**
-   - Approximately 50-60 MB (includes all dependencies)
+   - Approximately 96 MB (includes all dependencies)
    - Compressed with LZMA2 for smaller size
 
 ## Troubleshooting
@@ -118,16 +118,17 @@ To remove SmartScreen warnings:
 
 This is optional but recommended for professional distribution.
 
-## Building from Scratch
+## Building the installer using pyinstaller
 
 Complete build process:
 ```batch
-# 1. Build the executable
 build.bat
+```
 
-# 2. Build the installer (in Inno Setup)
-# Or use command line:
+## Bundle the installer using inno setup
+
+```batch
 "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" QuickDownloader.iss
 ```
 
-Your installer is ready in `installer_output\QuickDownloader_Setup_v1.0.0.exe`!
+Your installer is ready in `Output\QuickDownloader_Setup.exe`!
