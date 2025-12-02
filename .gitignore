@@ -23,3 +23,6 @@ QuickDownloader.iss
 
 #installer output
 installer_output/
+
+#ffmpeg
+ffmpeg/
