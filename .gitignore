@@ -26,3 +26,6 @@ installer_output/
 
 #ffmpeg
 ffmpeg/
+
+# Output
+Output/
