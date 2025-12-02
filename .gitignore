@@ -1,0 +1,25 @@
+# Build files and cache
+build/
+dist/
+*.spec.backup
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environment
+env/
+venv/
+
+# Test downloads
+test_downloads/
+test_downloads_fix/
+
+# Runtime files
+history.json
+
+# Installer
+QuickDownloader.iss
+
+#installer output
+installer_output/
