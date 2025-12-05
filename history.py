@@ -1,10 +1,11 @@
 import json
 import os
 from datetime import datetime
+from utils import get_user_data_dir
 
 class HistoryManager:
     def __init__(self, filename="history.json"):
-        self.filename = filename
+        self.filename = os.path.join(get_user_data_dir(), filename)
         self.history = self.load_history()
 
     def load_history(self):

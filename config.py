@@ -1,10 +1,11 @@
 import json
 import os
 import customtkinter as ctk
+from utils import get_user_data_dir
 
 class ConfigManager:
     def __init__(self, filename="config.json"):
-        self.filename = filename
+        self.filename = os.path.join(get_user_data_dir(), filename)
         self.config = self.load_config()
 
     def load_config(self):
