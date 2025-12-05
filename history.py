@@ -16,12 +16,13 @@ class HistoryManager:
         except:
             return []
 
-    def add_entry(self, title, url, status, path):
+    def add_entry(self, title, url, status, path, media_type="Unknown"):
         entry = {
             "title": title,
             "url": url,
             "status": status,
             "path": path,
+            "media_type": media_type,
             "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
         self.history.insert(0, entry) # Add to top

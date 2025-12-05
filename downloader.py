@@ -12,12 +12,17 @@ class MediaDownloader:
     def cancel(self):
         self._cancel_requested = True
 
-    def _progress_hook(self, d, progress_callback):
+    def _progress_hook(self, d, progress_callback, title_callback=None):
         if self._cancel_requested:
             raise Exception("Download cancelled by user")
         
         if d['status'] == 'downloading':
             try:
+                if title_callback:
+                    filename = d.get('filename')
+                    if filename:
+                        title_callback(os.path.basename(filename))
+
                 total = d.get('total_bytes') or d.get('total_bytes_estimate')
                 downloaded = d.get('downloaded_bytes', 0)
                 
@@ -49,7 +54,7 @@ class MediaDownloader:
                 print(f"Progress Error: {e}")
                 pass
 
-    def download(self, url, options, output_path, quality, format_type, progress_callback=None, completion_callback=None, error_callback=None):
+    def download(self, url, options, output_path, quality, format_type, progress_callback=None, completion_callback=None, error_callback=None, title_callback=None):
         self._cancel_requested = False
         
         def run():
@@ -96,7 +101,7 @@ class MediaDownloader:
                 }]
 
             # Add progress hook
-            ydl_opts['progress_hooks'] = [lambda d: self._progress_hook(d, progress_callback)]
+            ydl_opts['progress_hooks'] = [lambda d: self._progress_hook(d, progress_callback, title_callback)]
             
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
