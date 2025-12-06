@@ -17,6 +17,7 @@ test_downloads_fix/
 
 # Runtime files
 history.json
+config.json
 
 # Installer
 QuickDownloader.iss
