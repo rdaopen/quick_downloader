@@ -6,6 +6,7 @@ block_cipher = None
 added_files = [
     ('icon.ico', '.'),  # Include icon in root of dist folder
     ('ffmpeg', 'ffmpeg'),  # Include entire ffmpeg folder
+    ('icons', 'icons'), # Include icons folder
 ]
 
 # Analysis: specify all imports and data files
