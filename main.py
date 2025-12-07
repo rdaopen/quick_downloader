@@ -37,6 +37,7 @@ class App(ctk.CTk):
         self.history_manager = HistoryManager()
         self.active_downloads = [] 
         self.selected_download = None
+        self.selected_history_entries = [] # For history selection
         
         # FFmpeg check
         self.ffmpeg_path = resource_path("ffmpeg")
@@ -101,6 +102,7 @@ class App(ctk.CTk):
     def show_view(self, view_name):
         self.current_view = view_name
         self.selected_download = None
+        self.selected_history_entries = [] # Clear selection on view change
         self.update_cancel_button_state()
         
         # Update Sidebar Styling
@@ -155,6 +157,15 @@ class App(ctk.CTk):
             self.btn_cancel.configure(state="disabled")
 
     def show_history(self, filter_type):
+        self.history_control_bar = ctk.CTkFrame(self.content_area, height=40, fg_color="transparent")
+        self.history_control_bar.pack(fill="x", padx=10, pady=5)
+        
+        self.btn_clear_all = ctk.CTkButton(self.history_control_bar, text="Clear All History", fg_color="#C0392B", hover_color="#E74C3C", height=30, command=self.clear_all_history)
+        self.btn_clear_all.pack(side="right", padx=5)
+
+        self.btn_delete_selected = ctk.CTkButton(self.history_control_bar, text="Delete Selected", fg_color="#C0392B", hover_color="#E74C3C", height=30, state="disabled", command=self.delete_selected_history)
+        self.btn_delete_selected.pack(side="right", padx=5)
+
         self.scroll_frame = ctk.CTkScrollableFrame(self.content_area)
         self.scroll_frame.pack(fill="both", expand=True)
         
@@ -179,7 +190,36 @@ class App(ctk.CTk):
         }
 
         for entry in filtered_history:
-            HistoryItem(self.scroll_frame, entry, callbacks)
+            HistoryItem(self.scroll_frame, entry, callbacks, self.on_history_select)
+
+    def on_history_select(self, entry, is_selected):
+        if is_selected:
+            if entry not in self.selected_history_entries:
+                self.selected_history_entries.append(entry)
+        else:
+            if entry in self.selected_history_entries:
+                self.selected_history_entries.remove(entry)
+        
+        # Update Delete Button State
+        if self.selected_history_entries:
+            self.btn_delete_selected.configure(state="normal")
+        else:
+            self.btn_delete_selected.configure(state="disabled")
+
+    def clear_all_history(self):
+        if messagebox.askyesno("Confirm", "Are you sure you want to clear the entire history?"):
+            self.history_manager.clear_history()
+            self.selected_history_entries = []
+            self.show_view(self.current_view)
+
+    def delete_selected_history(self):
+        if not self.selected_history_entries:
+            return
+            
+        if messagebox.askyesno("Confirm", f"Delete {len(self.selected_history_entries)} selected items?"):
+            self.history_manager.remove_items(self.selected_history_entries)
+            self.selected_history_entries = []
+            self.show_view(self.current_view)
 
     def open_add_dialog(self):
         AddDownloadDialog(self, self.start_download_task, self.config_manager.get("default_path"))

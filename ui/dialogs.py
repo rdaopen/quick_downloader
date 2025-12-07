@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from tkinter import filedialog
+from tkinter import filedialog, Menu
 import os
 from utils import resource_path
 
@@ -105,11 +105,17 @@ class AddDownloadDialog(ctk.CTkToplevel):
         self.url_entry = ctk.CTkEntry(self, width=350)
         self.url_entry.grid(row=0, column=1, padx=10, pady=(20, 5), sticky="ew")
         
-        # Auto-paste
-        try:
-            self.url_entry.insert(0, self.clipboard_get())
-        except:
-            pass
+        # Prevent manual typing
+        self.url_entry.bind("<Key>", lambda e: "break")
+        
+        # Right Click Menu
+        self.context_menu = Menu(self, tearoff=0)
+        self.context_menu.add_command(label="Paste", command=self.paste_from_clipboard)
+        
+        self.url_entry.bind("<Button-3>", self.show_context_menu)
+        
+        # Auto-paste if valid link
+        self.check_clipboard()
 
         # Path
         ctk.CTkLabel(self, text="Save to:", text_color=("gray10", "gray90")).grid(row=1, column=0, padx=10, pady=5, sticky="e")
@@ -145,6 +151,28 @@ class AddDownloadDialog(ctk.CTkToplevel):
         
         ctk.CTkButton(btn_frame, text="Start Download", command=self.start_download).pack(side="left", padx=10)
         ctk.CTkButton(btn_frame, text="Cancel", fg_color="red", border_width=1, command=self.destroy).pack(side="left", padx=10)
+
+    def show_context_menu(self, event):
+        try:
+            self.context_menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            self.context_menu.grab_release()
+
+    def check_clipboard(self):
+        try:
+            content = self.clipboard_get()
+            if self.is_valid_link(content):
+                self.url_entry.delete(0, "end")
+                self.url_entry.insert(0, content)
+        except:
+            pass
+
+    def paste_from_clipboard(self):
+        self.check_clipboard()
+        
+    def is_valid_link(self, text):
+        text = text.strip()
+        return text.startswith("http://") or text.startswith("https://") or text.startswith("www.")
 
     def browse_path(self):
         path = filedialog.askdirectory()
