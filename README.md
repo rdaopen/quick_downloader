@@ -7,6 +7,7 @@ A modern, feature-rich Windows application for downloading videos and audio from
 - **High Quality Downloads**: Support for 4K, 1080p, and other resolutions.
 - **Audio Extraction**: Convert videos to high-quality MP3s (up to 320kbps).
 - **Playlist Support**: Download entire playlists with a single click.
+- **Chrome Extension**: Send links directly from your browser to the app.
 - **Modern UI**: Sleek, dark-themed interface using CustomTkinter.
 - **History Tracking**: Keep track of your downloads, play them, or open their location directly from the app.
 - **Smart Clipboard**: Right-click to paste URLs instantly.
@@ -14,18 +15,21 @@ A modern, feature-rich Windows application for downloading videos and audio from
 ## Installation
 
 1.  **Clone the repository:**
+
     ```bash
     git clone https://github.com/yourusername/quick_downloader.git
     cd quick_downloader
     ```
 
 2.  **Create a virtual environment (optional but recommended):**
+
     ```bash
     python -m venv env
     .\env\Scripts\activate
     ```
 
 3.  **Install dependencies:**
+
     ```bash
     pip install -r requirements.txt
     ```
@@ -36,6 +40,7 @@ A modern, feature-rich Windows application for downloading videos and audio from
 ## Usage
 
 Run the application:
+
 ```bash
 python main.py
 ```

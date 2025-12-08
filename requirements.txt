@@ -1,3 +1,5 @@
 customtkinter
 yt-dlp
 pyinstaller
+pystray
+Pillow

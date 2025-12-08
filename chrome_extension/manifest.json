@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "Quick Media Downloader Helper",
+  "version": "1.0",
+  "description": "Send video URLs to Quick Media Downloader",
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["http://localhost:6006/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icons/icon128.png"
+  },
+  "icons": {
+    "128": "icons/icon128.png"
+  }
+}

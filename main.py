@@ -11,6 +11,9 @@ from config import ConfigManager
 from utils import resource_path
 from ui.dialogs import AddDownloadDialog, SettingsDialog
 from ui.widgets import DownloadItem, HistoryItem
+import queue
+from server import BackgroundServer
+from tray import SystemTrayIcon
 
 # Initialize Config (Global for theme setting before App init)
 config_manager = ConfigManager()
@@ -47,6 +50,17 @@ class App(ctk.CTk):
         self.create_layout()
         self.show_view("Downloads")
 
+        # Background Server for Chrome Extension
+        self.url_queue = queue.Queue()
+        self.server = BackgroundServer(self.url_queue)
+        self.server.start()
+        self.check_new_downloads()
+
+        # System Tray
+        self.tray_icon = None
+        self.protocol("WM_DELETE_WINDOW", self.on_close_window)
+        self.init_tray()
+
     def create_layout(self):
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(1, weight=1)
@@ -64,6 +78,8 @@ class App(ctk.CTk):
         # 3. Content Area
         self.content_area = ctk.CTkFrame(self, corner_radius=0, fg_color=("#F5F5F5", "#1a1a1a"))
         self.content_area.grid(row=1, column=1, sticky="nsew")
+        
+        self.is_running = True
         
     def create_top_bar_items(self):
         # Load Icons
@@ -278,6 +294,7 @@ class App(ctk.CTk):
         self.after(0, lambda: self._update_ui_title(download_obj, title))
 
     def _update_ui_title(self, download_obj, title):
+        if not self.is_running: return
         if 'ui_widgets' in download_obj:
             try:
                 # Only update if title changed to avoid flickering/redundancy
@@ -289,10 +306,13 @@ class App(ctk.CTk):
 
     def update_progress(self, download_obj, progress, speed, eta):
         # Throttle updates?
-        # For now, just schedule UI update
-        self.after(0, lambda: self._update_ui_widget(download_obj, progress, speed, eta))
+        try:
+            self.after(0, lambda: self._update_ui_widget(download_obj, progress, speed, eta))
+        except:
+            pass
 
     def _update_ui_widget(self, download_obj, progress, speed, eta):
+        if not self.is_running: return
         if 'ui_widgets' in download_obj:
             try:
                 widgets = download_obj['ui_widgets']
@@ -309,6 +329,8 @@ class App(ctk.CTk):
         self.after(0, lambda: self._handle_completion(download_obj, error_msg, False))
 
     def _handle_completion(self, download_obj, message, success):
+        if not self.is_running: return
+
         if download_obj in self.active_downloads:
             self.active_downloads.remove(download_obj)
         
@@ -329,6 +351,19 @@ class App(ctk.CTk):
         else:
             if message != "Cancelled":
                  messagebox.showerror("Download Error", message)
+            
+            # --- CLEANUP PART FILES ON ERROR/CANCEL ---
+            try:
+                base_path = download_obj['data']['path']
+                # Search for files that might be leftovers. 
+                # Ideally we know the exact filename, but 'message' might not be it.
+                # However, downloader can expose 'current_filename'.
+                # For now, simplistic cleanup if we can find .part files recently modified?
+                # Actually, downloader.py is better for this.
+                # BUT, let's trigger a cleanup call on the downloader instance if possible.
+                pass 
+            except:
+                pass
             
         # Refresh current view
         self.show_view(self.current_view)
@@ -364,6 +399,49 @@ class App(ctk.CTk):
         self.history_manager.history.remove(entry)
         self.history_manager.save_history()
         self.show_view(self.current_view)
+
+    def check_new_downloads(self):
+        try:
+            while True:
+                url = self.url_queue.get_nowait()
+                if url:
+                    # Bring window to front (optional but helpful)
+                    self.deiconify()
+                    self.focus_force()
+                    
+                    # Open Add Dialog with URL
+                    AddDownloadDialog(self, self.start_download_task, self.config_manager.get("default_path"), initial_url=url)
+        except queue.Empty:
+            pass
+        finally:
+            if self.is_running:
+                self.after(1000, self.check_new_downloads)
+
+    def init_tray(self):
+        icon_path = resource_path("icon.ico")
+        self.tray_icon = SystemTrayIcon(icon_path, "Quick Media Downloader", self.show_window, self.quit_app)
+        self.tray_icon.start()
+
+    def on_close_window(self):
+        self.withdraw() # Hide window
+        
+    def show_window(self):
+        self.after(0, self.deiconify)
+
+    def quit_app(self):
+        self.is_running = False
+        # Stop everything
+        if self.tray_icon:
+            self.tray_icon.stop()
+        if self.server:
+            self.server.stop() 
+        
+        try:
+            self.destroy()
+        except:
+            pass
+            
+        sys.exit(0)
 
 if __name__ == "__main__":
     app = App()

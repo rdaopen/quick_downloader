@@ -69,10 +69,11 @@ class SettingsDialog(ctk.CTkToplevel):
         self.destroy()
 
 class AddDownloadDialog(ctk.CTkToplevel):
-    def __init__(self, parent, callback, default_path):
+    def __init__(self, parent, callback, default_path, initial_url=None):
         super().__init__(parent, fg_color=("#F5F5F5", "#1a1a1a"))
         self.callback = callback
         self.default_path = default_path
+        self.initial_url = initial_url
         self.title("Add Download")
         self.geometry("500x350")
         self.resizable(False, False)
@@ -114,8 +115,13 @@ class AddDownloadDialog(ctk.CTkToplevel):
         
         self.url_entry.bind("<Button-3>", self.show_context_menu)
         
-        # Auto-paste if valid link
-        self.check_clipboard()
+        
+        # Auto-fill if provided, else check clipboard
+        if self.initial_url:
+             self.url_entry.delete(0, "end")
+             self.url_entry.insert(0, self.initial_url)
+        else:
+             self.check_clipboard()
 
         # Path
         ctk.CTkLabel(self, text="Save to:", text_color=("gray10", "gray90")).grid(row=1, column=0, padx=10, pady=5, sticky="e")
