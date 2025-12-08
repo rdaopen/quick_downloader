@@ -8,6 +8,7 @@ class MediaDownloader:
         self.ffmpeg_path = ffmpeg_path
         self._cancel_requested = False
         self.download_thread = None
+        self.current_filename = None
 
     def cancel(self):
         self._cancel_requested = True
@@ -21,6 +22,7 @@ class MediaDownloader:
                 if title_callback:
                     filename = d.get('filename')
                     if filename:
+                        self.current_filename = filename # Track for cleanup
                         title_callback(os.path.basename(filename))
 
                 total = d.get('total_bytes') or d.get('total_bytes_estimate')
@@ -114,9 +116,24 @@ class MediaDownloader:
                 if "Download cancelled by user" in str(e):
                     if error_callback:
                         error_callback("Cancelled")
+                    self._cleanup()
                 else:
                     if error_callback:
                         error_callback(str(e))
+                    self._cleanup()
 
         self.download_thread = threading.Thread(target=run)
         self.download_thread.start()
+
+    def _cleanup(self):
+        try:
+            if self.current_filename and os.path.exists(self.current_filename):
+                os.remove(self.current_filename)
+            
+            # Also check for .part
+            if self.current_filename:
+                part_file = self.current_filename + ".part"
+                if os.path.exists(part_file):
+                     os.remove(part_file)
+        except Exception as e:
+            print(f"Cleanup error: {e}")

@@ -38,3 +38,12 @@ class HistoryManager:
 
     def get_history(self):
         return self.history
+
+    def clear_history(self):
+        self.history = []
+        self.save_history()
+
+    def remove_items(self, items_to_remove):
+        # items_to_remove should be a list of entry objects
+        self.history = [h for h in self.history if h not in items_to_remove]
+        self.save_history()
