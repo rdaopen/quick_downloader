@@ -6,9 +6,10 @@ import subprocess
 from tkinter import messagebox
 from PIL import Image
 from downloader import MediaDownloader
+from downloader_generic import SegmentedFileDownloader
 from history import HistoryManager
 from config import ConfigManager
-from utils import resource_path
+from utils import resource_path, detect_category
 from ui.dialogs import AddDownloadDialog, SettingsDialog
 from ui.widgets import DownloadItem, HistoryItem
 import queue
@@ -107,7 +108,7 @@ class App(ctk.CTk):
 
     def create_sidebar_items(self):
         self.sidebar_buttons = {}
-        items = ["Downloads", "Completed", "Videos", "Audios"]
+        items = ["Downloads", "Completed", "Videos", "Audios", "Playlists", "Documents", "Programs", "Compressed"]
         
         for i, item in enumerate(items):
             btn = ctk.CTkButton(self.sidebar, text=item, height=40, corner_radius=0, fg_color="transparent", text_color=("gray10", "gray90"), hover_color=("gray90", "gray30"), anchor="w",
@@ -194,6 +195,14 @@ class App(ctk.CTk):
             filtered_history = [h for h in history if h.get('media_type') == 'Video']
         elif filter_type == "Audios":
             filtered_history = [h for h in history if h.get('media_type') == 'Audio']
+        elif filter_type == "Playlists":
+            filtered_history = [h for h in history if h.get('media_type') == 'Playlist']
+        elif filter_type == "Documents":
+            filtered_history = [h for h in history if h.get('media_type') == 'Document']
+        elif filter_type == "Programs":
+            filtered_history = [h for h in history if h.get('media_type') == 'Program']
+        elif filter_type == "Compressed":
+            filtered_history = [h for h in history if h.get('media_type') == 'Compressed']
             
         if not filtered_history:
             ctk.CTkLabel(self.scroll_frame, text="No items found.", font=ctk.CTkFont(size=16)).pack(pady=50)
@@ -247,14 +256,32 @@ class App(ctk.CTk):
         ctk.set_appearance_mode(self.config_manager.get("theme"))
 
     def start_download_task(self, data):
-        # Create Downloader Instance
-        downloader = MediaDownloader(ffmpeg_path=self.ffmpeg_path)
-        
-        # Append subfolder based on format
-        if data['format'] == 'Video':
-            data['path'] = os.path.join(data['path'], 'Videos')
-        elif data['format'] == 'Audio':
-            data['path'] = os.path.join(data['path'], 'Audios')
+        # Determine Downloader & Path
+        if data.get('type') == 'File':
+            downloader = SegmentedFileDownloader()
+            # Categorize
+            cat = detect_category(data['url'])
+            if cat == 'Other': cat = 'Files' # Default folder for generic files
+            # Map robust categories to folders
+            folder_map = {
+                'Compressed': 'Compressed',
+                'Program': 'Programs',
+                'Document': 'Documents',
+                'Video': 'Videos', # Should rarely happen here if type is File but possible
+                'Audio': 'Audios'
+            }
+            subfolder = folder_map.get(cat, cat)
+            data['path'] = os.path.join(data['path'], subfolder)
+
+        else:
+            downloader = MediaDownloader(ffmpeg_path=self.ffmpeg_path)
+            # Append subfolder based on format/playlist
+            if data.get('playlist'):
+                data['path'] = os.path.join(data['path'], 'Playlists')
+            elif data['format'] == 'Video':
+                data['path'] = os.path.join(data['path'], 'Videos')
+            elif data['format'] == 'Audio':
+                data['path'] = os.path.join(data['path'], 'Audios')
             
         # Ensure directory exists
         if not os.path.exists(data['path']):
@@ -272,23 +299,34 @@ class App(ctk.CTk):
         if self.current_view == "Downloads":
             self.show_view("Downloads")
             
-        # Start Download
-        options = {
-            'outtmpl': '%(title)s.%(ext)s',
-            'noplaylist': not data['playlist'],
-        }
+
         
-        downloader.download(
-            data['url'],
-            options,
-            data['path'],
-            data['quality'],
-            data['format'],
-            progress_callback=lambda p, s, e: self.update_progress(download_obj, p, s, e),
-            completion_callback=lambda t: self.download_complete(download_obj, t),
-            error_callback=lambda m: self.download_error(download_obj, m),
-            title_callback=lambda t: self.update_title(download_obj, t)
-        )
+        if isinstance(downloader, MediaDownloader):
+            options = {
+                'outtmpl': '%(title)s.%(ext)s',
+                'noplaylist': not data['playlist'],
+            }
+            downloader.download(
+                data['url'],
+                options,
+                data['path'],
+                data['quality'],
+                data['format'],
+                progress_callback=lambda p, s, e: self.update_progress(download_obj, p, s, e),
+                completion_callback=lambda t: self.download_complete(download_obj, t),
+                error_callback=lambda m: self.download_error(download_obj, m),
+                title_callback=lambda t: self.update_title(download_obj, t)
+            )
+        else:
+            # File Downloader
+            downloader.download(
+                data['url'],
+                data['path'],
+                progress_callback=lambda p, s, e: self.update_progress(download_obj, p, s, e),
+                completion_callback=lambda t: self.download_complete(download_obj, t),
+                error_callback=lambda m: self.download_error(download_obj, m),
+                title_callback=lambda t: self.update_title(download_obj, t)
+            )
 
     def update_title(self, download_obj, title):
         self.after(0, lambda: self._update_ui_title(download_obj, title))
@@ -340,12 +378,23 @@ class App(ctk.CTk):
             
         if success:
             # Add to history
+            # Determine correct media type for history
+            media_type = "Other"
+            data = download_obj['data']
+            if data.get('type') == 'File':
+                media_type = detect_category(message) # message is filename here
+            elif data.get('playlist'):
+                media_type = "Playlist"
+            else:
+                media_type = data.get('format', 'Video')
+            
+            # Add to history
             self.history_manager.add_entry(
-                title=message, # message is title on success
+                title=message, # message is title/filename
                 url=download_obj['data']['url'],
                 status="Completed",
                 path=download_obj['data']['path'],
-                media_type=download_obj['data']['format']
+                media_type=media_type
             )
             messagebox.showinfo("Download Complete", f"Downloaded: {message}")
         else:
@@ -377,9 +426,14 @@ class App(ctk.CTk):
     # --- History Actions ---
     def play_file(self, entry):
         try:
-            file_path = os.path.join(entry.get('path', ''), entry.get('title', '') + '.mp3')
+            # Try exact match first (generic file)
+            file_path = os.path.join(entry.get('path', ''), entry.get('title', ''))
             if not os.path.exists(file_path):
-                file_path = os.path.join(entry.get('path', ''), entry.get('title', '') + '.mp4')
+                 # Try adding extensions (legacy media)
+                 file_path = os.path.join(entry.get('path', ''), entry.get('title', '') + '.mp3')
+                 if not os.path.exists(file_path):
+                     file_path = os.path.join(entry.get('path', ''), entry.get('title', '') + '.mp4')
+            
             if os.path.exists(file_path):
                 os.startfile(file_path)
         except Exception as e:
@@ -387,9 +441,13 @@ class App(ctk.CTk):
 
     def show_in_explorer(self, entry):
         try:
-            file_path = os.path.join(entry.get('path', ''), entry.get('title', '') + '.mp3')
+            # Try exact match first
+            file_path = os.path.join(entry.get('path', ''), entry.get('title', ''))
             if not os.path.exists(file_path):
-                file_path = os.path.join(entry.get('path', ''), entry.get('title', '') + '.mp4')
+                file_path = os.path.join(entry.get('path', ''), entry.get('title', '') + '.mp3')
+                if not os.path.exists(file_path):
+                    file_path = os.path.join(entry.get('path', ''), entry.get('title', '') + '.mp4')
+            
             if os.path.exists(file_path):
                 subprocess.run(['explorer', '/select,', os.path.abspath(file_path)])
         except Exception as e:
