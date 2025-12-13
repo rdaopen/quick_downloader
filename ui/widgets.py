@@ -66,7 +66,12 @@ class HistoryItem(ctk.CTkFrame):
         btn_frame = ctk.CTkFrame(self, fg_color="transparent")
         btn_frame.pack(side="right", padx=10)
         
-        ctk.CTkButton(btn_frame, text="▶ Play", width=60, height=24, command=lambda: self.callbacks['play'](self.entry)).pack(side="left", padx=(0, 5))
+        # Dynamic Action Button
+        action_text = "▶ Play"
+        if self.entry.get('media_type') not in ['Video', 'Audio', 'Playlist']:
+            action_text = "Open"
+            
+        ctk.CTkButton(btn_frame, text=action_text, width=60, height=24, command=lambda: self.callbacks['play'](self.entry)).pack(side="left", padx=(0, 5))
         ctk.CTkButton(btn_frame, text="📁 Show", width=60, height=24, command=lambda: self.callbacks['show'](self.entry)).pack(side="left", padx=(0, 5))
         ctk.CTkButton(btn_frame, text="🗑", width=30, height=24, fg_color="#C0392B", hover_color="#E74C3C", command=lambda: self.callbacks['remove'](self.entry)).pack(side="left")
 

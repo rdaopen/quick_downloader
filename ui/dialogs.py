@@ -1,7 +1,7 @@
 import customtkinter as ctk
 from tkinter import filedialog, Menu
 import os
-from utils import resource_path
+from utils import resource_path, detect_download_type
 
 class SettingsDialog(ctk.CTkToplevel):
     def __init__(self, parent, config_manager, callback):
@@ -106,8 +106,14 @@ class AddDownloadDialog(ctk.CTkToplevel):
         self.url_entry = ctk.CTkEntry(self, width=350)
         self.url_entry.grid(row=0, column=1, padx=10, pady=(20, 5), sticky="ew")
         
-        # Prevent manual typing
-        self.url_entry.bind("<Key>", lambda e: "break")
+        # Bind for auto-detection
+        self.url_entry.bind("<KeyRelease>", self.on_url_change)
+        
+        # Prevent manual typing? No, let them type. 
+        # But previously it was disabled. I'll re-enable it for better UX if they want to type specific URLs.
+        # Although the previous code had: self.url_entry.bind("<Key>", lambda e: "break")
+        # I will remove that restriction to allow typing.
+
         
         # Right Click Menu
         self.context_menu = Menu(self, tearoff=0)
@@ -120,6 +126,7 @@ class AddDownloadDialog(ctk.CTkToplevel):
         if self.initial_url:
              self.url_entry.delete(0, "end")
              self.url_entry.insert(0, self.initial_url)
+             self.run_auto_detect(self.initial_url)
         else:
              self.check_clipboard()
 
@@ -135,14 +142,22 @@ class AddDownloadDialog(ctk.CTkToplevel):
         settings_frame = ctk.CTkFrame(self, fg_color="transparent")
         settings_frame.grid(row=2, column=0, columnspan=3, padx=10, pady=10, sticky="ew")
         
+        # Type (Media vs File)
+        ctk.CTkLabel(settings_frame, text="Type:", text_color=("gray10", "gray90")).pack(side="left", padx=5)
+        self.type_var = ctk.StringVar(value="Media")
+        self.type_switch = ctk.CTkSegmentedButton(settings_frame, values=["Media", "File"], variable=self.type_var, command=self.update_type_options)
+        self.type_switch.pack(side="left", padx=5)
+
         # Format
-        ctk.CTkLabel(settings_frame, text="Format:", text_color=("gray10", "gray90")).pack(side="left", padx=5)
+        self.lbl_format = ctk.CTkLabel(settings_frame, text="Format:", text_color=("gray10", "gray90"))
+        self.lbl_format.pack(side="left", padx=5)
         self.format_var = ctk.StringVar(value="Video")
         self.format_switch = ctk.CTkSegmentedButton(settings_frame, values=["Video", "Audio"], variable=self.format_var, command=self.update_quality_options)
         self.format_switch.pack(side="left", padx=5)
         
         # Quality
-        ctk.CTkLabel(settings_frame, text="Quality:", text_color=("gray10", "gray90")).pack(side="left", padx=(15, 5))
+        self.lbl_quality = ctk.CTkLabel(settings_frame, text="Quality:", text_color=("gray10", "gray90"))
+        self.lbl_quality.pack(side="left", padx=(15, 5))
         self.quality_var = ctk.StringVar(value="Best")
         self.quality_menu = ctk.CTkOptionMenu(settings_frame, variable=self.quality_var, values=["Best", "4K", "1080p", "720p", "480p"])
         self.quality_menu.pack(side="left", padx=5)
@@ -170,6 +185,7 @@ class AddDownloadDialog(ctk.CTkToplevel):
             if self.is_valid_link(content):
                 self.url_entry.delete(0, "end")
                 self.url_entry.insert(0, content)
+                self.run_auto_detect(content)
         except:
             pass
 
@@ -204,9 +220,33 @@ class AddDownloadDialog(ctk.CTkToplevel):
         data = {
             "url": url,
             "path": path,
+            "type": self.type_var.get(),
             "format": self.format_var.get(),
             "quality": self.quality_var.get(),
             "playlist": self.playlist_var.get()
         }
         self.callback(data)
         self.destroy()
+
+    def on_url_change(self, event):
+        url = self.url_entry.get()
+        self.run_auto_detect(url)
+
+    def run_auto_detect(self, url):
+        type_ = detect_download_type(url)
+        self.type_var.set(type_)
+        self.update_type_options(type_)
+
+    def update_type_options(self, value):
+        if value == "File":
+            # Hide Format and Quality
+            self.lbl_format.pack_forget()
+            self.format_switch.pack_forget()
+            self.lbl_quality.pack_forget()
+            self.quality_menu.pack_forget()
+        else:
+            # Show Format and Quality
+            self.lbl_format.pack(side="left", padx=5)
+            self.format_switch.pack(side="left", padx=5)
+            self.lbl_quality.pack(side="left", padx=(15, 5))
+            self.quality_menu.pack(side="left", padx=5)
